@@ -41,8 +41,9 @@ class WeatherAppManager {
     }
     
     func getLatLongFromCity(cityName: String,completion: @escaping (Result<[CityObject],NetworkError>) -> Void) {
+        let encodedCityName = cityName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
         guard let url = URL(string:
-        "\(geoCodingBaseURL)?q=\(cityName)&appid=\(weatherAPIKey)")
+        "\(geoCodingBaseURL)?q=\(encodedCityName)&appid=\(weatherAPIKey)")
         else {
             completion(.failure(.serverError))
             return
