@@ -32,14 +32,13 @@ class WeatherViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-        searchbar.delegate = self
+        self.initialSetup()
+        self.loadLastSearchResult()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        if let cityname = UserDefaults.standard.value(forKey: lastSearchKey) as? String {
-            self.fetchLocationFromSearchText(cityName: cityname)
-        }
+    func initialSetup() {
+        searchbar.delegate = self
+        locationManager.delegate = self
     }
     
     //MARK:- UI updation method
@@ -55,15 +54,18 @@ class WeatherViewController: UIViewController {
             }
         }
     }
+    
+    private func loadLastSearchResult() {
+        if let cityname = UserDefaults.standard.value(forKey: lastSearchKey) as? String {
+            self.fetchLocationFromSearchText(cityName: cityname)
+        }
+    }
 }
 
 extension WeatherViewController {
     
     //MARK:- Custom methods
     private func fetchLocationFromSearchText(cityName: String) {
-        guard checkLocationPermissionGranted() else {
-            return
-        }
         weatherViewModel.fetchLocationFromCity(cityName: cityName, completion: { currentWeather, error in
             DispatchQueue.main.async {
                 if let _ = error {
@@ -75,16 +77,6 @@ extension WeatherViewController {
             }
         })
     }
-    
-    private func checkLocationPermissionGranted() -> Bool {
-        let status = locationManager.authorizationStatus
-        if status == CLAuthorizationStatus.notDetermined || status == CLAuthorizationStatus.denied || status == CLAuthorizationStatus.restricted {
-            self.displayAlert(title: LocationErrorAlertTitle, message: LocationErrorAlertMessage)
-            return false
-        }
-        return true
-    }
-    
 }
     
 extension WeatherViewController : UISearchBarDelegate {
@@ -98,5 +90,36 @@ extension WeatherViewController : UISearchBarDelegate {
     
     func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
         searchBar.endEditing(true)
+    }
+}
+
+extension WeatherViewController : CLLocationManagerDelegate {
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.first {
+            self.weatherViewModel.fetchWeather(location.coordinate.latitude, location.coordinate.longitude) { currentWeather, error in
+                DispatchQueue.main.async {
+                    if let _ = error {
+                        self.displayAlert(title: serverErrorAlertTitle, message: serverErrorAlertMessage)
+                    } else {
+                        self.currentWeather = currentWeather
+                        UserDefaults.standard.set(currentWeather?.name, forKey: lastSearchKey)
+                        self.updateUI()
+                    }
+                }
+            }
+        }
+    }
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager.authorizationStatus == .authorizedWhenInUse {
+            locationManager.requestLocation()
+        } else if manager.authorizationStatus == .denied {
+            self.displayAlert(title: LocationErrorAlertTitle, message: LocationErrorAlertMessage)
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        self.displayAlert(title: LocationErrorAlertTitle, message: LocationErrorAlertMessage)
     }
 }
