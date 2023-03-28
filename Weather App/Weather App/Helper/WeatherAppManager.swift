@@ -1,5 +1,5 @@
 //
-//  WatherAppManager.swift
+//  WeatherAppManager.swift
 //  Weather App
 //
 //  Created by Chandni Pambhar on 24/03/23.
@@ -9,7 +9,6 @@ import Foundation
 
 enum NetworkError: Error {
     case serverError
-    case decodingError
 }
 
 class WeatherAppManager {
@@ -34,7 +33,7 @@ class WeatherAppManager {
                 let weather = try JSONDecoder().decode(CurrentWeather.self, from: data)
                 completion(.success(weather))
             } catch {
-                completion(.failure(.decodingError))
+                completion(.failure(.serverError))
             }
         }.resume()
  
@@ -62,7 +61,7 @@ class WeatherAppManager {
                 }
                 completion(.success(object))
             } catch {
-                completion(.failure(.decodingError))
+                completion(.failure(.serverError))
             }
         }.resume()
  
